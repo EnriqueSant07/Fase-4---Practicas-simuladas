@@ -1,0 +1,6 @@
+2026-05-11 23:37:08,120 - ERROR - Fallo en registro de cliente: Documento debe ser numérico.
+2026-05-11 23:37:08,120 - ERROR - Fallo en registro de cliente: Correo electrónico inválido.
+2026-05-11 23:37:08,121 - ERROR - ID 103: La duracion debe ser un valor positivo.
+2026-05-11 23:37:08,121 - ERROR - ID 104: Cliente invalido.
+2026-05-11 23:37:08,122 - ERROR - ID 107: La duracion debe ser un valor positivo.
+2026-05-11 23:37:08,122 - ERROR - ID 108: Servicio invalido.
