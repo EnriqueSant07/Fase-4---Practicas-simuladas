@@ -1,4 +1,3 @@
-
 import logging
 from abc import ABC, abstractmethod
 
@@ -25,7 +24,7 @@ class ReservaInvalidaError(SistemaGestionError):
 
 # Creacion de clase entidad (abstraccion y encapsulacion)
 class EntidadGeneral(ABC):
-    def _init_(self, id_entidad):
+    def __init__(self, id_entidad):
         self._id_entidad = id_entidad
 
     @abstractmethod
@@ -34,9 +33,9 @@ class EntidadGeneral(ABC):
 
 
 class Cliente(EntidadGeneral):
-    def _init_(self, id_entidad, nombre, documento, correo):
+    def __init__(self, id_entidad, nombre, documento, correo):
         # Llamar al constructor de la clase padre (EntidadGeneral)
-        super()._init_(id_entidad)
+        super().__init__(id_entidad)
         
         # Inicializar atributos usando setters para validacion automatica
         self.nombre = nombre
@@ -85,7 +84,7 @@ class Cliente(EntidadGeneral):
 
 # Clase servicio (polimorfismo y herencia)
 class Servicio(ABC):
-    def _init_(self, id_servicio, nombre_servicio, precio_base):
+    def __init__(self, id_servicio, nombre_servicio, precio_base):
         #Inicializar atributos comunes del servicio
         if precio_base <= 0:
             raise ServicioNoDisponibleError("El precio base debe ser mayor a cero.")
@@ -112,3 +111,106 @@ class AsesoriaEspecializada(Servicio):
         # metodo polimorfico: el precio cambia si el servicio es remoto o presencial
         tarifa = self.precio_base if es_remoto else self.precio_base * 1.5
         return tarifa * duracion
+    
+# Clase reserva
+class Reserva:
+    def __init__(self, id_reserva, cliente, servicio, duracion):
+        #inicializar reserva con cliente, servicio, duracion y estado por defecto
+        self.id_reserva = id_reserva
+        self.cliente = cliente
+        self.servicio = servicio
+        self.duracion = duracion
+        self.estado = "Pendiente"
+
+    def procesar(self):
+        print(f"Procesando operacion #{self.id_reserva}")
+        try:
+            #validar si el objeto cliente es legitimo
+            if not isinstance(self.cliente, Cliente):
+                raise ClienteInvalidoError("Cliente invalido.")
+                
+            #Validar que la duracion sea un numero positivo
+            if self.duracion <= 0:
+                raise ReservaInvalidaError("La duracion debe ser un valor positivo.")
+            
+            # Calcular costo total usando polimorfismo
+            if not isinstance(self.servicio, Servicio):
+                raise ServicioNoDisponibleError("Servicio invalido.")
+            costo = self.servicio.calcular_costo(self.duracion)
+            
+        except (ClienteInvalidoError, ReservaInvalidaError, ServicioNoDisponibleError) as e:
+            #manejar errores especificos de logica de negocio
+            self.estado = "FALLIDA"
+            logging.error(f"ID {self.id_reserva}: {e}")
+            print(f"ERROR CONTROLADO: {e}")
+            
+        except Exception as e:
+            self.estado = "ERROR CRÍTICO"
+            logging.error(f"ID {self.id_reserva} (Inesperado): {e}")
+            print("ERROR INESPERADO: Revisar el log para mas detalles.")
+            raise SistemaGestionError("Error crítico en el procesamiento de la reserva.") from e
+            
+        else:
+            #este bloque se ejecuta solo si no se lanzaron excepciones
+            self.estado = "EXITOSA"
+            print(f"Reserva confirmada: {self.cliente.nombre} - Costo: ${costo:,.0f}")
+            
+        finally:
+            # este bloque siempre se ejecuta sin importar si hubo error o no
+            print(f"Estado final: {self.estado}")
+
+    def cancelar(self):
+        if self.estado == "EXITOSA":
+            self.estado = "CANCELADA"
+            print(f"Reserva #{self.id_reserva} cancelada.")
+        else:
+            raise ReservaInvalidaError("Solo se pueden cancelar reservas exitosas.")
+
+#SIMULACION DE 10 OPERACIONES
+def ejecutar_simulacion():
+    s_sala = ReservaSalas(1, "Sala de Juntas", 40000)
+    s_equipo = AlquilerEquipos(2, "Servidor Pro", 120000)
+    s_asesor = AsesoriaEspecializada(3, "Consultoría PHP", 80000)
+
+    # Lista para almacenar intentos de reserva
+    operaciones = []
+
+    try:
+        # Crear objetos de clientes validos
+        c1 = Cliente(1, "Kike", "1090123", "kike@mail.com")
+        c2 = Cliente(2, "Laura", "5243100", "laura@mail.com")
+        
+        # Agregar intentos de reserva exitosos
+        operaciones.append(Reserva(101, c1, s_sala, 4))
+        operaciones.append(Reserva(102, c2, s_asesor, 2))
+    except Exception as e: 
+        print(f"Error de registro: {e}")
+
+    print("\n--- Pruebas de registro (Simulando datos invalidos)")
+    #Probando documento invalido como letras y correo invalido sin @
+    for data in [("Error", "letras123", "mail@x.com"), ("Juan", "999", "sin_correo")]:
+        try:
+            Cliente(0, data[0], data[1], data[2])
+        except ClienteInvalidoError as e:
+            logging.error(f"Fallo en registro de cliente: {e}")
+            print(f"Error de registro capturado: {e}")
+
+    operaciones.append(Reserva(103, c1, s_equipo, -1))       
+    
+    operaciones.append(Reserva(104, "No es un objeto Cliente", s_sala, 5)) 
+    
+    operaciones.append(Reserva(105, c2, s_equipo, 10))      
+    operaciones.append(Reserva(106, c1, s_asesor, 1))       
+    
+    operaciones.append(Reserva(107, c2, s_sala, 0))         
+
+    operaciones.append(Reserva(108, c1, None, 3))           
+
+    for op in operaciones:
+        try:
+            op.procesar()
+        except SistemaGestionError:
+            pass
+
+if __name__ == "__main__":
+    ejecutar_simulacion()
